@@ -32,6 +32,10 @@ public abstract class ConfigManager {
             fileName = this.configFilePath();
             String jsonString = MixAll.file2String(fileName);
 
+            if(fileName != null && fileName.contains("subscriptionGroup") && !fileName.endsWith("bak")){
+                System.out.println(jsonString);
+            }
+
             if (null == jsonString || jsonString.length() == 0) {
                 return this.loadBak();
             } else {

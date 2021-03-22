@@ -111,8 +111,7 @@ public class BrokerStartup {
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
 
-            nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
-                String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE, String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
             nettyServerConfig.setListenPort(10911);
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
@@ -148,6 +147,7 @@ public class BrokerStartup {
             }
 
             String namesrvAddr = brokerConfig.getNamesrvAddr();
+            //这里是验证地址的合法性
             if (null != namesrvAddr) {
                 try {
                     String[] addrArray = namesrvAddr.split(";");
@@ -162,6 +162,7 @@ public class BrokerStartup {
                 }
             }
 
+            //这里根据角色设置ID，master为0 slave为非0
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:

@@ -170,9 +170,7 @@ public class CommitLog {
         final List<MappedFile> mappedFiles = this.mappedFileQueue.getMappedFiles();
         if (!mappedFiles.isEmpty()) {
             // Began to recover from the last third file
-            int index = mappedFiles.size() - 3;
-            if (index < 0)
-                index = 0;
+            int index = (mappedFiles.size() - 3) > 0 ? (mappedFiles.size() - 3) : 0;
 
             MappedFile mappedFile = mappedFiles.get(index);
             ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
@@ -248,7 +246,6 @@ public class CommitLog {
         try {
             // 1 TOTAL SIZE
             int totalSize = byteBuffer.getInt();
-
             // 2 MAGIC CODE
             int magicCode = byteBuffer.getInt();
             switch (magicCode) {
@@ -447,14 +444,14 @@ public class CommitLog {
             long processOffset = mappedFile.getFileFromOffset();
             long mappedFileOffset = 0;
             while (true) {
+                //主要看消息写入的东西计算得出的大小与保持的大小是否一致，如果不一致，就是有问题的，后面的内容都是无效的
                 DispatchRequest dispatchRequest = this.checkMessageAndReturnSize(byteBuffer, checkCRCOnRecover);
                 int size = dispatchRequest.getMsgSize();
 
                 if (dispatchRequest.isSuccess()) {
                     // Normal data
                     if (size > 0) {
-                        mappedFileOffset += size;
-
+                        mappedFileOffset += size;//总偏移大小
                         if (this.defaultMessageStore.getMessageStoreConfig().isDuplicationEnable()) {
                             if (dispatchRequest.getCommitLogOffset() < this.defaultMessageStore.getConfirmOffset()) {
                                 this.defaultMessageStore.doDispatch(dispatchRequest);
@@ -466,9 +463,9 @@ public class CommitLog {
                     // Come the end of the file, switch to the next file
                     // Since the return 0 representatives met last hole, this can
                     // not be included in truncate offset
-                    else if (size == 0) {
-                        index++;
-                        if (index >= mappedFiles.size()) {
+                    else if (size == 0) {//size==0说明消息为空，也就是这个文件读完了
+                        index++;//接着处理下一个文件
+                        if (index >= mappedFiles.size()) {//文件全部读取完了
                             // The current branch under normal circumstances should
                             // not happen
                             log.info("recover physics file over, last mapped file " + mappedFile.getFileName());
@@ -507,6 +504,16 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 根据checkpoint里的索引时间戳或者commitlog刷盘时间戳来判断MappedFile是否匹配
+     * 如果魔数编码不是消息魔数编码就不符合
+     * 如果第一条消息的存储时间戳小于或等于checkpoint记录的索引时间戳就是匹配的
+     * 如果第一条消息的存储时间戳小于或等于checkpoint记录的commitlog刷盘时间戳就是匹配的
+     * 否则就是不匹配的
+     *
+     * @param mappedFile
+     * @return
+     */
     private boolean isMappedFileMatchedRecover(final MappedFile mappedFile) {
         ByteBuffer byteBuffer = mappedFile.sliceByteBuffer();
 
