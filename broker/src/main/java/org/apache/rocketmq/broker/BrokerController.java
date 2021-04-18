@@ -111,22 +111,60 @@ public class BrokerController {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final InternalLogger LOG_PROTECTION = InternalLoggerFactory.getLogger(LoggerName.PROTECTION_LOGGER_NAME);
     private static final InternalLogger LOG_WATER_MARK = InternalLoggerFactory.getLogger(LoggerName.WATER_MARK_LOGGER_NAME);
+
     private final BrokerConfig brokerConfig;
     private final NettyServerConfig nettyServerConfig;
     private final NettyClientConfig nettyClientConfig;
     private final MessageStoreConfig messageStoreConfig;
+
+    /**
+     * 对应consumerOffset.json文件
+     */
     private final ConsumerOffsetManager consumerOffsetManager;
+
     private final ConsumerManager consumerManager;
+    /**
+     * 对应consumerFilter.json文件
+     */
     private final ConsumerFilterManager consumerFilterManager;
+
+    /**
+     * Producer信息维护
+     */
     private final ProducerManager producerManager;
+    /**
+     * 用于剔除不可用的channel，包括主动的和被动的<br/>
+     * 主动的：定时任务去巡检<br/>
+     * 被动的：netty事件触发
+     */
     private final ClientHousekeepingService clientHousekeepingService;
+    /**
+     * 拉取消息请求的处理器
+     */
     private final PullMessageProcessor pullMessageProcessor;
+
     private final PullRequestHoldService pullRequestHoldService;
+    /**
+     * 消息到达监听器，当消息到达时，会调用pullRequestHoldService唤起"拉取消息请求"的处理
+     */
     private final MessageArrivingListener messageArrivingListener;
+    /**
+     * Broker到客户端的渠道，比如通知consumer rebalance
+     */
     private final Broker2Client broker2Client;
+    /**
+     * 对应subscriptionGroup.json文件
+     */
     private final SubscriptionGroupManager subscriptionGroupManager;
+    /**
+     * consumer ID更改监听器，比如group新加consumer或者有consumer意外挂了或者主动停止，就有可能触发ID更改<br/>
+     * 发生改变时，会调用broker2Client通知group里的各个consumer
+     */
     private final ConsumerIdsChangeListener consumerIdsChangeListener;
     private final RebalanceLockManager rebalanceLockManager = new RebalanceLockManager();
+    /**
+     * 用于与namesrc交互的api
+     */
     private final BrokerOuterAPI brokerOuterAPI;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "BrokerControllerScheduledThread"));
@@ -145,7 +183,13 @@ public class BrokerController {
     private final List<ConsumeMessageHook> consumeMessageHookList = new ArrayList<ConsumeMessageHook>();
     private MessageStore messageStore;
     private RemotingServer remotingServer;
+    /**
+     * 传说中的VIP服务？
+     */
     private RemotingServer fastRemotingServer;
+    /**
+     * 对应topics.json文件
+     */
     private TopicConfigManager topicConfigManager;
     private ExecutorService sendMessageExecutor;
     private ExecutorService pullMessageExecutor;
@@ -159,10 +203,17 @@ public class BrokerController {
     private boolean updateMasterHAServerAddrPeriodically = false;
     private BrokerStats brokerStats;
     private InetSocketAddress storeHost;
+    /**
+     * 快速失败响应服务，就是每10秒检查PageCache是否繁忙<br/>
+     * 如果繁忙，就从请求队列<堵塞的>拿出请求，直接返回系统繁忙
+     */
     private BrokerFastFailure brokerFastFailure;
     private Configuration configuration;
     private FileWatchService fileWatchService;
     private TransactionalMessageCheckService transactionalMessageCheckService;
+    /**
+     * 事务消息处理服务
+     */
     private TransactionalMessageService transactionalMessageService;
     private AbstractTransactionalMessageCheckListener transactionalMessageCheckListener;
     private Future<?> slaveSyncFuture;
@@ -232,17 +283,16 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
-        boolean result = this.topicConfigManager.load();
 
+        //下面这四个load非常简单，就是对对应的文件就行反序列化
+        boolean result = this.topicConfigManager.load();
         result = result && this.consumerOffsetManager.load();
         result = result && this.subscriptionGroupManager.load();
         result = result && this.consumerFilterManager.load();
 
         if (result) {
             try {
-                this.messageStore =
-                    new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
-                        this.brokerConfig);
+                this.messageStore = new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener, this.brokerConfig);
                 if (messageStoreConfig.isEnableDLegerCommitLog()) {
                     DLedgerRoleChangeHandler roleChangeHandler = new DLedgerRoleChangeHandler(this, (DefaultMessageStore) messageStore);
                     ((DLedgerCommitLog)((DefaultMessageStore) messageStore).getCommitLog()).getdLedgerServer().getdLedgerLeaderElector().addRoleChangeHandler(roleChangeHandler);
@@ -931,8 +981,7 @@ public class BrokerController {
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway, boolean forceRegister) {
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
 
-        if (!PermName.isWriteable(this.getBrokerConfig().getBrokerPermission())
-            || !PermName.isReadable(this.getBrokerConfig().getBrokerPermission())) {
+        if (!PermName.isWriteable(this.getBrokerConfig().getBrokerPermission()) || !PermName.isReadable(this.getBrokerConfig().getBrokerPermission())) {
             ConcurrentHashMap<String, TopicConfig> topicConfigTable = new ConcurrentHashMap<String, TopicConfig>();
             for (TopicConfig topicConfig : topicConfigWrapper.getTopicConfigTable().values()) {
                 TopicConfig tmp =

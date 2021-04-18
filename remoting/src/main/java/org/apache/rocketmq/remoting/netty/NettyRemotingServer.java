@@ -70,9 +70,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private final EventLoopGroup eventLoopGroupBoss;
     private final NettyServerConfig nettyServerConfig;
 
+    //公共默认处理线程池，在注册非默认处理器的时候，如果没提供其它处理线程池就用它
     private final ExecutorService publicExecutor;
+    //事件监听器，处理channel各种事件，具体逻辑的话，就要看在外部如何构建的
     private final ChannelEventListener channelEventListener;
-
+    //定时器，用于定时扫描超时的请求
     private final Timer timer = new Timer("ServerHouseKeepingService", true);
     private DefaultEventExecutorGroup defaultEventExecutorGroup;
 
@@ -298,6 +300,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         this.processorTable.put(requestCode, pair);
     }
 
+    //TJS  package org.apache.rocketmq.remoting.netty
     @Override
     public void registerDefaultProcessor(NettyRequestProcessor processor, ExecutorService executor) {
         this.defaultRequestProcessor = new Pair<NettyRequestProcessor, ExecutorService>(processor, executor);

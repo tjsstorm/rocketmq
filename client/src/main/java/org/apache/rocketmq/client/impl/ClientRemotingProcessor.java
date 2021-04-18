@@ -130,8 +130,7 @@ public class ClientRemotingProcessor extends AsyncNettyRequestProcessor implemen
         return null;
     }
 
-    public RemotingCommand notifyConsumerIdsChanged(ChannelHandlerContext ctx,
-        RemotingCommand request) throws RemotingCommandException {
+    public RemotingCommand notifyConsumerIdsChanged(ChannelHandlerContext ctx, RemotingCommand request) throws RemotingCommandException {
         try {
             final NotifyConsumerIdsChangedRequestHeader requestHeader =
                 (NotifyConsumerIdsChangedRequestHeader) request.decodeCommandCustomHeader(NotifyConsumerIdsChangedRequestHeader.class);

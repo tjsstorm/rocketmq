@@ -484,6 +484,7 @@ public class CommitLog {
                 }
             }
 
+            //processOffset是MappedFile的起始位置，mappedFileOffset是有效消息的总偏移
             processOffset += mappedFileOffset;
             this.mappedFileQueue.setFlushedWhere(processOffset);
             this.mappedFileQueue.setCommittedWhere(processOffset);

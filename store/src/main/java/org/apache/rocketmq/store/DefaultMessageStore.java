@@ -82,6 +82,9 @@ public class DefaultMessageStore implements MessageStore {
 
     private final AllocateMappedFileService allocateMappedFileService;
 
+    /**
+     * 用于构建consumeQueue和index的
+     */
     private final ReputMessageService reputMessageService;
 
     private final HAService haService;
@@ -95,8 +98,7 @@ public class DefaultMessageStore implements MessageStore {
     private final RunningFlags runningFlags = new RunningFlags();
     private final SystemClock systemClock = new SystemClock();
 
-    private final ScheduledExecutorService scheduledExecutorService =
-        Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("StoreScheduledThread"));
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("StoreScheduledThread"));
     private final BrokerStatsManager brokerStatsManager;
     private final MessageArrivingListener messageArrivingListener;
     private final BrokerConfig brokerConfig;
@@ -107,6 +109,9 @@ public class DefaultMessageStore implements MessageStore {
 
     private AtomicLong printTimes = new AtomicLong(0);
 
+    /**
+     *包含consumer构建和索引构建两个调度器
+     */
     private final LinkedList<CommitLogDispatcher> dispatcherList;
 
     private RandomAccessFile lockFile;
@@ -115,8 +120,10 @@ public class DefaultMessageStore implements MessageStore {
 
     boolean shutDownNormal = false;
 
-    private final ScheduledExecutorService diskCheckScheduledExecutorService =
-            Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("DiskCheckScheduledThread"));
+    /**
+     * 用户检测磁盘空间是否已满的定时任务
+     */
+    private final ScheduledExecutorService diskCheckScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("DiskCheckScheduledThread"));
 
     public DefaultMessageStore(final MessageStoreConfig messageStoreConfig, final BrokerStatsManager brokerStatsManager,
         final MessageArrivingListener messageArrivingListener, final BrokerConfig brokerConfig) throws IOException {
@@ -534,8 +541,7 @@ public class DefaultMessageStore implements MessageStore {
         long begin = this.getCommitLog().getBeginTimeInLock();
         long diff = this.systemClock.now() - begin;
 
-        return diff < 10000000
-            && diff > this.messageStoreConfig.getOsPageCacheBusyTimeOutMills();
+        return diff < 10000000 && diff > this.messageStoreConfig.getOsPageCacheBusyTimeOutMills();
     }
 
     @Override
@@ -1620,8 +1626,11 @@ public class DefaultMessageStore implements MessageStore {
 
         private void deleteExpiredFiles() {
             int deleteCount = 0;
+            //文件保留时间(单位小时)
             long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
+            //删除文件的时间间隔(担心影响IO)
             int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
+            //强行停止时间(先平缓停止，超过这个时间就强行停止)
             int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
 
             boolean timeup = this.isTimeToDelete();
@@ -1630,8 +1639,9 @@ public class DefaultMessageStore implements MessageStore {
 
             if (timeup || spacefull || manualDelete) {
 
-                if (manualDelete)
+                if (manualDelete) {
                     this.manualDeleteFileSeveralTimes--;
+                }
 
                 boolean cleanAtOnce = DefaultMessageStore.this.getMessageStoreConfig().isCleanFileForciblyEnable() && this.cleanImmediately;
 
@@ -1658,8 +1668,7 @@ public class DefaultMessageStore implements MessageStore {
             long currentTimestamp = System.currentTimeMillis();
             if ((currentTimestamp - this.lastRedeleteTimestamp) > interval) {
                 this.lastRedeleteTimestamp = currentTimestamp;
-                int destroyMapedFileIntervalForcibly =
-                    DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
+                int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
                 if (DefaultMessageStore.this.commitLog.retryDeleteFirstFile(destroyMapedFileIntervalForcibly)) {
                 }
             }

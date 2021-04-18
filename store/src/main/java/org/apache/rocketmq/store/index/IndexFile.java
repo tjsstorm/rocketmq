@@ -192,6 +192,7 @@ public class IndexFile {
         if (this.mappedFile.hold()) {
             int keyHash = indexKeyHashMethod(key);
             int slotPos = keyHash % this.hashSlotNum;
+            //计算出槽位
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -201,6 +202,7 @@ public class IndexFile {
                     // hashSlotSize, true);
                 }
 
+                //取出槽位存储的索引
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
                 // if (fileLock != null) {
                 // fileLock.release();
@@ -215,14 +217,17 @@ public class IndexFile {
                             break;
                         }
 
-                        int absIndexPos =
-                            IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
-                                + nextIndexToRead * indexSize;
+                        //根据索引计算出索引存储信息的起始位置
+                        int absIndexPos = IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize + nextIndexToRead * indexSize;
 
+                        //当前索引的hash值
                         int keyHashRead = this.mappedByteBuffer.getInt(absIndexPos);
+                        //当前索引对应消息的物理存储(commitlog)偏移
                         long phyOffsetRead = this.mappedByteBuffer.getLong(absIndexPos + 4);
 
+                        //当前索引对应消息与索引为0的消息的存储时间差
                         long timeDiff = (long) this.mappedByteBuffer.getInt(absIndexPos + 4 + 8);
+                        //和当前索引的key的hash值一样的前一个索引
                         int prevIndexRead = this.mappedByteBuffer.getInt(absIndexPos + 4 + 8 + 4);
 
                         if (timeDiff < 0) {
@@ -238,12 +243,14 @@ public class IndexFile {
                             phyOffsets.add(phyOffsetRead);
                         }
 
+                        //如果前一个索引存储的是无效索引就退出链表遍历
                         if (prevIndexRead <= invalidIndex
                             || prevIndexRead > this.indexHeader.getIndexCount()
                             || prevIndexRead == nextIndexToRead || timeRead < begin) {
                             break;
                         }
 
+                        //把前一个索引设置为当前索引，也就相当于链表的遍历过程中移到nextnode
                         nextIndexToRead = prevIndexRead;
                     }
                 }

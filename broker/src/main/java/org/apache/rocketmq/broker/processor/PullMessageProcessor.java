@@ -153,8 +153,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         ConsumerFilterData consumerFilterData = null;
         if (hasSubscriptionFlag) {
             try {
-                subscriptionData = FilterAPI.build(
-                    requestHeader.getTopic(), requestHeader.getSubscription(), requestHeader.getExpressionType()
+                subscriptionData = FilterAPI.build(requestHeader.getTopic(), requestHeader.getSubscription(), requestHeader.getExpressionType()
                 );
                 if (!ExpressionType.isTagType(subscriptionData.getExpressionType())) {
                     consumerFilterData = ConsumerFilterManager.build(
@@ -171,8 +170,8 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 return response;
             }
         } else {
-            ConsumerGroupInfo consumerGroupInfo =
-                this.brokerController.getConsumerManager().getConsumerGroupInfo(requestHeader.getConsumerGroup());
+            //获取订阅信息
+            ConsumerGroupInfo consumerGroupInfo = this.brokerController.getConsumerManager().getConsumerGroupInfo(requestHeader.getConsumerGroup());
             if (null == consumerGroupInfo) {
                 log.warn("the consumer's group info not exist, group: {}", requestHeader.getConsumerGroup());
                 response.setCode(ResponseCode.SUBSCRIPTION_NOT_EXIST);
@@ -195,6 +194,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 return response;
             }
 
+            //疑点(是不是版本来控制负载均衡)
             if (subscriptionData.getSubVersion() < requestHeader.getSubVersion()) {
                 log.warn("The broker's subscription is not latest, group: {} {}", requestHeader.getConsumerGroup(),
                     subscriptionData.getSubString());
@@ -203,13 +203,13 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 return response;
             }
             if (!ExpressionType.isTagType(subscriptionData.getExpressionType())) {
-                consumerFilterData = this.brokerController.getConsumerFilterManager().get(requestHeader.getTopic(),
-                    requestHeader.getConsumerGroup());
+                consumerFilterData = this.brokerController.getConsumerFilterManager().get(requestHeader.getTopic(), requestHeader.getConsumerGroup());
                 if (consumerFilterData == null) {
                     response.setCode(ResponseCode.FILTER_DATA_NOT_EXIST);
                     response.setRemark("The broker's consumer filter data is not exist!Your expression may be wrong!");
                     return response;
                 }
+
                 if (consumerFilterData.getClientVersion() < requestHeader.getSubVersion()) {
                     log.warn("The broker's consumer filter data is not latest, group: {}, topic: {}, serverV: {}, clientV: {}",
                         requestHeader.getConsumerGroup(), requestHeader.getTopic(), consumerFilterData.getClientVersion(), requestHeader.getSubVersion());

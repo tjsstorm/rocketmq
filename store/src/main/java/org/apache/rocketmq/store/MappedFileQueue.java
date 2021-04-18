@@ -333,14 +333,12 @@ public class MappedFileQueue {
         }
     }
 
-    public int deleteExpiredFileByTime(final long expiredTime,
-        final int deleteFilesInterval,
-        final long intervalForcibly,
-        final boolean cleanImmediately) {
-        Object[] mfs = this.copyMappedFiles(0);
+    public int deleteExpiredFileByTime(final long expiredTime, final int deleteFilesInterval, final long intervalForcibly, final boolean cleanImmediately) {
 
-        if (null == mfs)
+        Object[] mfs = this.copyMappedFiles(0);
+        if (null == mfs) {
             return 0;
+        }
 
         int mfsLength = mfs.length - 1;
         int deleteCount = 0;
@@ -354,6 +352,7 @@ public class MappedFileQueue {
                         files.add(mappedFile);
                         deleteCount++;
 
+                        //一次最多删除10个
                         if (files.size() >= DELETE_FILES_BATCH_MAX) {
                             break;
                         }

@@ -641,9 +641,7 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPullConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
 
-                this.pullAPIWrapper = new PullAPIWrapper(
-                    mQClientFactory,
-                    this.defaultMQPullConsumer.getConsumerGroup(), isUnitMode());
+                this.pullAPIWrapper = new PullAPIWrapper(mQClientFactory, this.defaultMQPullConsumer.getConsumerGroup(), isUnitMode());
                 this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
 
                 if (this.defaultMQPullConsumer.getOffsetStore() != null) {

@@ -161,8 +161,9 @@ public class TopicConfigManager extends ConfigManager {
             if (this.lockTopicConfigTable.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     topicConfig = this.topicConfigTable.get(topic);
-                    if (topicConfig != null)
+                    if (topicConfig != null) {
                         return topicConfig;
+                    }
 
                     TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
                     if (defaultTopicConfig != null) {
@@ -175,9 +176,8 @@ public class TopicConfigManager extends ConfigManager {
                         if (PermName.isInherited(defaultTopicConfig.getPerm())) {
                             topicConfig = new TopicConfig(topic);
 
-                            int queueNums =
-                                clientDefaultTopicQueueNums > defaultTopicConfig.getWriteQueueNums() ? defaultTopicConfig
-                                    .getWriteQueueNums() : clientDefaultTopicQueueNums;
+                            int queueNums = clientDefaultTopicQueueNums > defaultTopicConfig.getWriteQueueNums()
+                                    ? defaultTopicConfig.getWriteQueueNums() : clientDefaultTopicQueueNums;
 
                             if (queueNums < 0) {
                                 queueNums = 0;
@@ -439,8 +439,7 @@ public class TopicConfigManager extends ConfigManager {
     @Override
     public void decode(String jsonString) {
         if (jsonString != null) {
-            TopicConfigSerializeWrapper topicConfigSerializeWrapper =
-                TopicConfigSerializeWrapper.fromJson(jsonString, TopicConfigSerializeWrapper.class);
+            TopicConfigSerializeWrapper topicConfigSerializeWrapper = TopicConfigSerializeWrapper.fromJson(jsonString, TopicConfigSerializeWrapper.class);
             if (topicConfigSerializeWrapper != null) {
                 this.topicConfigTable.putAll(topicConfigSerializeWrapper.getTopicConfigTable());
                 this.dataVersion.assignNewOne(topicConfigSerializeWrapper.getDataVersion());
